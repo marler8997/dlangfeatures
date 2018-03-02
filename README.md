@@ -100,6 +100,59 @@ Error: none of the overloads of `foo` are callable using argument types `(int,st
 ```
 Note that type mismatches are indicated by a `!` in the location where a type mismatch occurs.
 
+### template auto value parameter
+
+If you reference the D grammar for templates (See https://dlang.org/spec/template.html), there are currently 5 categories of template parameters:
+```
+TemplateParameter:
+    TemplateTypeParameter
+    TemplateValueParameter
+    TemplateAliasParameter
+    TemplateSequenceParameter
+    TemplateThisParameter
+```
+
+However there is a hole in this list, namely, generic template value parameters.  The current `TemplateValueParameter` grammar node must explicitly declare a "BasicType":
+```
+TemplateValueParameter:
+    BasicType Declarator
+    BasicType Declarator TemplateValueParameterSpecialization
+    BasicType Declarator TemplateValueParameterDefault
+    BasicType Declarator TemplateValueParameterSpecialization TemplateValueParameterDefault
+```
+For example:
+```
+template foo(string value)
+{
+    ...
+}
+foo!"hello";
+```
+
+However, you can't create a template that accepts a value of *any* type.  This would a good use case for the `auto` keyword, i.e.
+```
+template foo(auto value)
+{
+    ...
+}
+foo!0;
+foo!"hello";
+foo!'c';
+```
+
+This would be a simple change to the grammar, namely,
+```
+BasicTemplateType:
+    BasicType
+    auto
+
+TemplateValueParameter:
+    BasicTemplateType Declarator
+    BasicTemplateType Declarator TemplateValueParameterSpecialization
+    BasicTemplateType Declarator TemplateValueParameterDefault
+    BasicTemplateType Declarator TemplateValueParameterSpecialization TemplateValueParameterDefault
+```
+
 ### Context Functions
 
 This is just an idea.  The concept is to allow a function to behave like a "nested function" but be defined outside the function.  This obviously means it would need to be a template since each call to it would have a completely different context/environment.  Therefore, some type of template function should work well, i.e.
