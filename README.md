@@ -58,6 +58,16 @@ foo();   // no need to load "somemodule"
 s.bar(); // now we need to load somemodule
 ```
 
+### Lazy AST Generation
+
+According to @dkgroot, most of the memory consumed by the compiler is in AST nodes (around 80% according to him).  Because of this, alot of memory could be saved (and possibly performance as well) if the AST for function bodies were only generated when they were needed.
+
+In order to find the beginning/end of functions, dmd could lex the function body without generating AST.  If lexing is fast, then the compiler could simply save a reference to the function body source to parse again later if needed.  Profiling how fast lexing is would be helpful to determine the right approach here.  You could also have a "fast lexer" which only parses a subset of the full grammar, able to determine the start/end of blocks without having to know the full grammar.
+
+### Compiler Profiling
+
+Built-in profiling to the compiler that can be enabled/disabled at compile-time (so it doesn't affect the released compiler).
+
 ### Unittests
 
 Currently if you compile with `-unittest`, the unittests get injected to the beginning of the program.  However, a common use case is that you want to compile in the unittests but only run them once, but then you don't want to have to rebuild the program to remove the unittests.  Some ideas:
