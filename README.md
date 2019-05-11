@@ -23,6 +23,48 @@ void findMyLibrary()
 }
 ```
 
+### Automatic library idiom: only link to what you use
+
+This idiom allows external library dependencies to be declared in source code and to only be linked when the corresponding symbols are used.
+
+The idea is that you put all the symbols that require linking to the library in their own module.  This module could also contain a `pragma(lib, "mylibrary.so")` to automatically tell the compiler to link to the library when the module is used.  This special module can be a normal module or a package module (i.e. `<mylibrary>/package.d`) which allows you to create submodules that may contain symbols that don't require linking.
+
+Note that if there are any symbols in the library that don't require linking (i.e. enums/templates/etc), then it's important to put those symbols in a different module so that using them doesn't pull in the module that causes the library to be linked. Of course, if those symbols don't make sense without linking to the library, then there's no need for the separation.
+
+Here's an example of how this idiom would look with the C library:
+```D
+--- main.d
+import libc.stdio;
+
+int main(string[] args)
+{
+    printf("hello\n".ptr); // Comment out to see that the pragma msg goes away
+    return 0;
+}
+--- libc/package.d
+module libc;
+
+pragma(lib, "libc.so");
+extern (C) int printf(const char* format, ...);
+
+--- libc/stdio.d
+module libc.stdio;
+
+template from(string moduleName)
+{
+    mixin("import from = " ~ moduleName ~ ";");
+}
+// Allows printf to be loaded only when it's used
+auto printf(T...)(T args) { pragma(inline, true); from!"libc".printf(args); }
+
+```
+
+This still allows the current idom of importing symbols based on the existing C header file organization, and still allows the library to only be linked it is used.
+
+If DRuntime re-organized it's libc modules and runtime module to match this idom, then programs would only need to link with those libraries when they are used.  This will become more useful as the DRuntime itself becomes more modular and really implements "pay for what you use".
+
+One set of libraries that can use this immediately are the Windows libraries.  My `mar` library organizes the Windows' library symbols using this idiom which means the corresponding libraries automatically get linked in whenever their symbols are used.
+
 ### DMD Paralell Compilation
 
 ### Lazy Imports
